@@ -89,7 +89,7 @@ SUMP v2 是一个“服务的互联网”式的智能体系统。每个服务独
 - [x] 设置热链（M7）：注册即全量下发（受理回执不等待送达）｜`settings` 事件回传结果（ok=true / ok=false + 原因）｜骨架通用接收（`HandleSetting` 声明 + 校验 + 应用；注册后异步拉取兜底）｜设置项接入全部服务（reasoner 3 / memory 5 / images 1 / qq 1 / 中心 2）｜面板事件驱动自动刷新（无刷新按钮）
 - [x] 设置全链路（M10）：**秘密项**（`HandleSecret`：值不进中心——不落盘、不回显，只在提交那一次转发给服务，服务自己持久化 `data/<名>-secret.json` 并在启动时加载；名片只报「有没有值」；注册对齐不含它）｜**只读项**（`HandleReadOnly`：进面板展示启动值、改动明确拒绝）｜**服务自报**（`AnnounceSetting` → `report_setting`：服务侧的值自己变了实时回传，中心不改覆盖值，面板同时显示「中心口径」与「服务侧」两列，不一致给「服务侧已变」标记）｜面板三类渲染（秘密项密码框覆盖 / 清空；只读项无修改入口）｜**全部服务的启动参数进面板**：reasoner（`llm.*` / `memory` / `images` 热改 + `name`/`addr`/`center` 只读）· qq（`napcat.url` 热改即重连 / `napcat.token` 秘密 / `reasoner`·`images` 热改 + 只读三要素）· memory（`recall.embedding` 热改 + `db` 与三要素只读）· timer（`portal` 热改 + 三要素只读）· images / 中心自身（路径与三要素只读）· 门户（五个只读项，不发明 configure 机制）｜CI 的 frontend 任务跑门户全链路 e2e（需先构建前端产物）
 - [x] 前端服务 v1（`frontend`）：设置中心可视化面板——TS 服务节点（注册 / 心跳 / 名册）+ HTTP JSON + SSE；设置查看 / 修改（configure 下发）/ 重置；协议以 Go 产出夹具做跨语言字节级锚定
-- [x] 文件服务（含 Excel/Word/PPT 读写）：`files` 服务（save/fetch/read/write/edit_word/edit_ppt，独立进程/独立库）；QQ 私聊文件消息 → 存库 → 占位带 id 上链；`read` 声明 `tool: true` 自动成为 LLM 工具（文本截断 / 二进制明确拒绝 / xlsx 转 TSV / docx/pptx 提取正文）；`write` 单元格级编辑 / `edit_word` .docx 纯文本替换 / `edit_ppt` .pptx 纯文本替换——含服务级测试、qq 接缝测试与全链真进程 e2e
+- [x] 文件服务（含 Excel/Word/PPT/PDF 读写）：`files` 服务（save/fetch/read/write/edit_word/edit_ppt/edit_pdf，独立进程/独立库）；QQ 私聊文件消息 → 存库 → 占位带 id 上链；`read` 声明 `tool: true` 自动成为 LLM 工具（文本截断 / 二进制明确拒绝 / xlsx 转 TSV / docx/pptx/pdf 提取正文）；`write` 单元格级编辑 / `edit_word` .docx 纯文本替换 / `edit_ppt` .pptx 纯文本替换 / `edit_pdf` 元数据与页操作（set_info/rotate/delete_pages/keep_pages，op 注册表留扩展接缝）——含服务级测试、qq 接缝测试与全链真进程 e2e
 - [x] embedding 服务（M8，Python）：文本 → 向量（onnxruntime + tokenizers 本地推理；fake 后端供测试与 CI）；协议 / 注册自愈 / 双后端
 - [x] 语义召回（M8）：memory 接入 embedding——向量列（派生、懒补齐）+ 余弦 ≥0.45 阈值 + **bigram 兜底**（服务缺席/超时静默回落）；跨语言真进程 e2e；query 前缀 A/B 实测（no-prefix 胜出）
 - [x] shell 命令执行服务（M9）：受理即回执（审批与执行不占响应）｜审批接缝（`Approver` 接口；未接入 = 一律未通过）｜结果以 `report_result` 补报（reasoner：在跑则注入、已收尾则开补报轮）｜护栏：工作目录根（越界即拒）+ 执行超时（终止整棵进程树）+ 输出上限（截断标注）+ 并行/队列上限（满即拒）｜8 个设置项（`exec.*` / `approval.*`）
@@ -97,7 +97,7 @@ SUMP v2 是一个“服务的互联网”式的智能体系统。每个服务独
 - [x] 会话记忆扩到轨迹：记录分 `kind`（user / assistant / reasoning / tool_call / tool_result）+ `meta` + `seq`；reasoner 抓深度思考、工具执行前记命令、异步工具终态补报记输出，门户经 `progress` SSE 实时画出来
 - [x] 任务板块：`tasks` 表 + 六个 `task_*` 动作；一个会话最多一个进行中任务（SQLite 部分唯一索引兜底，并发建不上就回头读）；没有任务先建再开工；**完成判定权在 reasoner**（内置 `task_status`，交付前必须先判，最多催两轮，仍不判按 continue 记账）；完结即不再续，记录留在原处
 - [x] 门户 v2：对话改成步骤时间线 + Markdown 渲染；侧栏「会话 → 任务」目录，点任务只做跳转；设置项说人话（`kind` / `options` / `unit` → 分段控件 / 服务下拉 / 开关 / 单位读法）；语言包（`locales/*.json`，含"全 x"测试包抓漏键）；整站配色跟本地时段走（17 个锚点插值底色 / 光斑 / 强调色，按亮度自动切深浅令牌）
-- [ ] 下一步：巩固线（sleep 提炼）、群聊（@ 必回 / 自主插话）、审批第二层补强（LLM 解读命令 + 富通知）、门户多会话与文件上传入口、PDF/Office 抽取（files.read 升级）、shell 后续（后台任务托管 / 输出有界引用 / 文件工具）
+- [ ] 下一步：巩固线（sleep 提炼）、群聊（@ 必回 / 自主插话）、审批第二层补强（LLM 解读命令 + 富通知）、门户多会话与文件上传入口、PDF 复杂编辑（水印 / 合并 / 拆分 / 表单填充，files.edit_pdf 的 op 扩展）、shell 后续（后台任务托管 / 输出有界引用 / 文件工具）
 
 ## 文档
 
